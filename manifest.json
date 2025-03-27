@@ -1,0 +1,20 @@
+{
+    "name": "giselle EHR System",
+    "short_name": "giselleEHR",
+    "icons": [
+        {
+            "src": "192-icon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "512-icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "start_url": "./index.html",
+    "display": "standalone",
+    "theme_color": "#FFFFFF",
+    "background_color": "#FFFFFF"
+}

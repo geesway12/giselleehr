@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patients</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"> <!-- Link to the updated CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"> <!-- Flatpickr CSS -->
+</head>
+<body>
+  <header class="d-flex align-items-center p-3">
+    <img src="logo.png" alt="Facility System Logo" style="height: 50px; margin-right: 15px;">
+    <h1>Patients</h1>
+  </header>
+
+  <div class="container-box">
+    <h3>Add New Patient</h3>
+    <form id="patientForm" class="mt-4">
+      <div class="form-group">
+        <label for="facilityName">Facility Name</label>
+        <input type="text" id="facilityName" class="form-control" placeholder="Enter Facility Name" required>
+      </div>
+      <div class="form-group">
+        <label for="patientName">Patient Name</label>
+        <input type="text" id="patientName" class="form-control" placeholder="Enter Patient Name" required>
+      </div>
+      <div class="form-group">
+        <label for="dob">Date of Birth</label>
+        <input type="text" id="dob" class="form-control" placeholder="Select Date of Birth" required>
+      </div>
+      <div class="form-group">
+        <label for="age">Age</label>
+        <input type="text" id="age" class="form-control" placeholder="Calculated Age" readonly>
+      </div>
+      <div class="form-group">
+        <label for="sex">Sex</label>
+        <select id="sex" class="form-control" required>
+          <option value="">Select</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="contact">Contact Information</label>
+        <input type="text" id="contact" class="form-control" placeholder="Enter 10-digit Contact Number" maxlength="10" pattern="\d{10}" required>
+      </div>
+
+      <!-- Custom Fields Section -->
+      <div id="customFieldsContainer" class="mt-4">
+        <!-- Custom fields will be dynamically added here -->
+      </div>
+      <button type="button" id="addFieldBtn" class="btn btn-secondary mt-3">Add Field</button>
+      <button type="submit" class="btn btn-primary mt-3">Add Patient</button>
+    </form>
+  </div>
+
+  <!-- Registered Patients List -->
+  <div id="patientList" class="mt-5">
+    <h3>Registered Patients</h3>
+    <button id="exportPatientsBtn" class="btn btn-success mb-3">Export to Excel</button>
+    <table class="table table-bordered table-hover">
+      <thead>
+        <tr>
+          <th>Patient ID</th>
+          <th>Name</th>
+          <th>Date of Birth</th>
+          <th>Age</th>
+          <th>Sex</th>
+          <th>Contact</th>
+          <th>Date of Registration</th>
+          <th>Date Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="patientTableBody">
+        <!-- Patient rows will be dynamically rendered here -->
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 gissele EHR System</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> <!-- Flatpickr JS -->
+  <script src="patients.js"></script>
+  <script src="db.js"></script>
+  <script>
+    // Initialize Flatpickr for the Date of Birth field
+    flatpickr("#dob", {
+      dateFormat: "Y-m-d", // Format as YYYY-MM-DD
+      maxDate: "today", // Disable future dates
+      onChange: function(selectedDates, dateStr) {
+        // Calculate age when a date is selected
+        const dob = new Date(dateStr);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age--;
+        }
+        document.getElementById('age').value = age >= 0 ? age : '';
+      }
+    });
+  </script>
+</body>
+</html>
