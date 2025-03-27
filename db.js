@@ -3,7 +3,7 @@ const DB_VERSION = 1;
 let db;
 let dbReady = false;
 
-// Open IndexedDB
+// ✅ Open IndexedDB
 const request = indexedDB.open(DB_NAME, DB_VERSION);
 
 request.onupgradeneeded = event => {
@@ -25,34 +25,34 @@ request.onupgradeneeded = event => {
 request.onsuccess = event => {
   db = event.target.result;
   dbReady = true;
-  console.log('Database initialized successfully.');
+  console.log('✅ IndexedDB initialized successfully');
 
-  // Notify other scripts that the database is ready
-  if (typeof onDatabaseReady === 'function') {
-    onDatabaseReady();
+  // 🔔 Notify other scripts if ready callback is set
+  if (typeof window.onDatabaseReady === 'function') {
+    window.onDatabaseReady();
   }
 };
 
 request.onerror = event => {
-  console.error("IndexedDB error:", event.target.errorCode);
+  console.error('❌ IndexedDB error:', event.target.errorCode);
 };
 
-// ✅ Save data to a store
+// ✅ Save data to store
 function saveData(storeName, data) {
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.put(data);
 
   request.onsuccess = () => {
-    console.log(`Data saved to ${storeName}.`);
+    console.log(`✅ Data saved to ${storeName}:`, data);
   };
 
   request.onerror = event => {
-    console.error(`Error saving to ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Error saving to ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Get all data from store
+// ✅ Get all records from store
 function getAllData(storeName, callback) {
   const tx = db.transaction(storeName, 'readonly');
   const store = tx.objectStore(storeName);
@@ -67,9 +67,13 @@ function getAllData(storeName, callback) {
       callback(data);
     }
   };
+
+  tx.onerror = event => {
+    console.error(`❌ Error reading from ${storeName}:`, event.target.errorCode);
+  };
 }
 
-// ✅ Get single record by key
+// ✅ Get one record by key
 function getDataByKey(storeName, key, callback) {
   const tx = db.transaction(storeName, 'readonly');
   const store = tx.objectStore(storeName);
@@ -80,36 +84,36 @@ function getDataByKey(storeName, key, callback) {
   };
 
   request.onerror = event => {
-    console.error(`Error retrieving from ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Error retrieving from ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Delete record
+// ✅ Delete a record by key
 function deleteData(storeName, key) {
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.delete(key);
 
   request.onsuccess = () => {
-    console.log(`Deleted key ${key} from ${storeName}.`);
+    console.log(`🗑️ Deleted key ${key} from ${storeName}`);
   };
 
   request.onerror = event => {
-    console.error(`Error deleting from ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Error deleting from ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Clear store
+// ✅ Clear entire store
 function clearStore(storeName) {
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.clear();
 
   request.onsuccess = () => {
-    console.log(`Cleared all data from ${storeName}.`);
+    console.log(`🧹 Cleared all data from ${storeName}`);
   };
 
   request.onerror = event => {
-    console.error(`Error clearing ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Error clearing ${storeName}:`, event.target.errorCode);
   };
 }

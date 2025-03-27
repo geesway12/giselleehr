@@ -1,4 +1,4 @@
-// Calculate age from DOB
+// ✅ Calculate age from DOB
 function calculateAge(dob) {
   const birthDate = new Date(dob);
   const today = new Date();
@@ -10,16 +10,16 @@ function calculateAge(dob) {
   return age;
 }
 
-// Helper function to format date as dd-mm-yyyy
+// ✅ Format date as DD-MM-YYYY
 function formatDate(dateString) {
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}-${month}-${year}`;
 }
 
-// Search patient by ID and display readonly details
+// ✅ Search patient by ID and display details
 function searchPatient() {
   const patientID = document.getElementById("searchPatientID").value.trim();
   if (!patientID) {
@@ -29,7 +29,7 @@ function searchPatient() {
 
   getDataByKey("patients", patientID, patient => {
     if (patient) {
-      document.getElementById("hiddenPatientID").value = patientID; // Populate hidden field
+      document.getElementById("hiddenPatientID").value = patientID;
       document.getElementById("patientDetails").style.display = "block";
       document.getElementById("displayPatientName").textContent = patient.name || "N/A";
       document.getElementById("displaySex").textContent = patient.sex || "N/A";
@@ -41,46 +41,32 @@ function searchPatient() {
   });
 }
 
-// Save visit
-document.getElementById("visitForm").onsubmit = event => {
-  event.preventDefault(); // Prevent form submission
+// ✅ Save Visit
+function handleVisitFormSubmit(event) {
+  event.preventDefault();
 
-  const patientId = document.getElementById("hiddenPatientID").value; // Hidden field for patient ID
-  const visitDate = document.getElementById("visitDate").value;
-  const reason = document.getElementById("reason").value;
-  const notes = document.getElementById("notes").value;
-  const history = document.getElementById("history").value;
-  const examinationFindings = document.getElementById("examinationFindings").value;
-  const investigations = document.getElementById("investigations").value;
-  const diagnosis = document.getElementById("diagnosis").value;
-  const treatment = document.getElementById("treatment").value;
-
-  // Ensure patientId is populated
+  const patientId = document.getElementById("hiddenPatientID").value;
   if (!patientId) {
-    alert("Patient details are missing. Please search for a patient or select one from the Registered Patients list.");
+    alert("Patient details are missing. Please search for a patient.");
     return;
   }
 
-  const visitId = `${patientId}-${Date.now().toString().slice(-6)}`; // Generate unique visitId
-
   const visit = {
-    visitId: visitId,
-    patientId: patientId,
-    visitDate: visitDate,
-    reason: reason,
-    notes: notes,
-    history: history,
-    examinationFindings: examinationFindings,
-    investigations: investigations,
-    diagnosis: diagnosis,
-    treatment: treatment,
-    createdAt: new Date().toISOString(), // Add a timestamp for when the visit was created
+    visitId: `${patientId}-${Date.now().toString().slice(-6)}`,
+    patientId,
+    visitDate: document.getElementById("visitDate").value,
+    reason: document.getElementById("reason").value,
+    notes: document.getElementById("notes").value,
+    history: document.getElementById("history").value,
+    examinationFindings: document.getElementById("examinationFindings").value,
+    investigations: document.getElementById("investigations").value,
+    diagnosis: document.getElementById("diagnosis").value,
+    treatment: document.getElementById("treatment").value,
+    createdAt: new Date().toISOString(),
     customFields: {}
   };
 
-  // Collect custom field values
-  const customFieldsContainer = document.getElementById("customFieldsContainer");
-  const customFieldInputs = customFieldsContainer.querySelectorAll(".custom-field");
+  const customFieldInputs = document.querySelectorAll("#customFieldsContainer .custom-field");
   customFieldInputs.forEach(field => {
     const fieldName = field.querySelector(".field-name").value.trim();
     const fieldValue = field.querySelector(".field-value").value.trim();
@@ -89,21 +75,19 @@ document.getElementById("visitForm").onsubmit = event => {
     }
   });
 
-  // Save the visit to the database
   saveData("visits", visit);
-  alert("Visit saved successfully for Patient: " + patientId);
+  alert("Visit saved successfully!");
 
-  // Clear the form for new entry
   document.getElementById("visitForm").reset();
-  document.getElementById("patientDetails").style.display = "none"; // Hide patient details
-  renderVisitList(); // Refresh the visit list
-};
+  document.getElementById("patientDetails").style.display = "none";
+  renderVisitList();
+}
 
-// Render visit list
+// ✅ Render Visit List
 function renderVisitList() {
   getAllData("visits", visits => {
     const visitTableBody = document.getElementById("visitTableBody");
-    visitTableBody.innerHTML = ""; // Clear existing rows
+    visitTableBody.innerHTML = "";
 
     visits.forEach(visit => {
       getDataByKey("patients", visit.patientId, patient => {
@@ -119,9 +103,7 @@ function renderVisitList() {
           <td>${visit.investigations || "N/A"}</td>
           <td>${visit.diagnosis || "N/A"}</td>
           <td>${visit.treatment || "N/A"}</td>
-          <td>
-            <button class="btn btn-sm btn-secondary">Edit</button>
-          </td>
+          <td><button class="btn btn-sm btn-secondary">Edit</button></td>
         `;
         visitTableBody.appendChild(row);
       });
@@ -129,12 +111,12 @@ function renderVisitList() {
   });
 }
 
-// Export visits to Excel
-document.getElementById("exportVisitsBtn").onclick = () => {
+// ✅ Export Visits to Excel
+function exportVisitsToExcel() {
   getAllData("visits", visits => {
     const exportData = visits.map(visit => ({
       VisitID: visit.visitId,
-      VisitDate: formatDate(visit.visitDate), // Format date as dd-mm-yyyy
+      VisitDate: formatDate(visit.visitDate),
       PatientID: visit.patientId,
       Reason: visit.reason,
       Notes: visit.notes,
@@ -143,53 +125,53 @@ document.getElementById("exportVisitsBtn").onclick = () => {
       Investigations: visit.investigations || "N/A",
       Diagnosis: visit.diagnosis || "N/A",
       Treatment: visit.treatment || "N/A",
-      CreatedAt: formatDate(visit.createdAt) // Format createdAt date as dd-mm-yyyy
+      CreatedAt: formatDate(visit.createdAt)
     }));
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(exportData);
     XLSX.utils.book_append_sheet(wb, ws, "Visits");
     XLSX.writeFile(wb, "Visits.xlsx");
   });
-};
+}
 
-// Initialize Flatpickr for the Visit Date field
-flatpickr("#visitDate", {
-  dateFormat: "Y-m-d", // Format as YYYY-MM-DD
-  maxDate: "today", // Disable future dates
-});
-
-// Pre-fill patient details if query parameters are present
+// ✅ Pre-fill from query parameters
 function prefillPatientDetails() {
   const urlParams = new URLSearchParams(window.location.search);
   const patientId = urlParams.get('patientId');
-  const name = urlParams.get('name');
-  const sex = urlParams.get('sex');
-  const age = urlParams.get('age');
 
   if (patientId) {
-    document.getElementById('hiddenPatientID').value = patientId; // Populate hidden field
-    document.getElementById('searchPatientID').value = patientId;
-    document.getElementById('displayPatientName').textContent = name || '';
-    document.getElementById('displaySex').textContent = sex || '';
-    document.getElementById('displayAge').textContent = age || '';
-    document.getElementById('patientDetails').style.display = 'block';
+    document.getElementById("hiddenPatientID").value = patientId;
+    document.getElementById("searchPatientID").value = patientId;
+
+    getDataByKey("patients", patientId, patient => {
+      if (patient) {
+        document.getElementById("displayPatientName").textContent = patient.name || "";
+        document.getElementById("displaySex").textContent = patient.sex || "";
+        document.getElementById("displayAge").textContent = calculateAge(patient.dob);
+        document.getElementById("patientDetails").style.display = "block";
+      }
+    });
   }
 }
 
-// Call the function on page load
-document.addEventListener('DOMContentLoaded', prefillPatientDetails);
+// ✅ Initialize App
+function initializeVisitModule() {
+  flatpickr("#visitDate", {
+    dateFormat: "Y-m-d",
+    maxDate: "today"
+  });
 
-// Initial load
-renderVisitList();
+  document.getElementById("visitForm").addEventListener("submit", handleVisitFormSubmit);
+  document.getElementById("exportVisitsBtn").addEventListener("click", exportVisitsToExcel);
+  prefillPatientDetails();
+  renderVisitList();
+}
 
-// Fetch and display visits on page load
-document.addEventListener('DOMContentLoaded', () => {
-  if (dbReady) {
-    renderVisitList(); // Fetch and display visits
-  } else {
-    // Wait for the database to initialize
-    window.onDatabaseReady = () => {
-      renderVisitList();
-    };
-  }
-});
+// ✅ Wait for DB to be ready
+if (typeof dbReady !== "undefined" && dbReady) {
+  initializeVisitModule();
+} else {
+  window.onDatabaseReady = () => {
+    initializeVisitModule();
+  };
+}
