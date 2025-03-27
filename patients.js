@@ -36,12 +36,12 @@ function renderPatientList() {
       row.innerHTML = `
         <td>${patient.patientId}</td>
         <td>${patient.name}</td>
-        <td>${patient.dob}</td>
+        <td>${formatDateToDDMMYYYY(patient.dob)}</td>
         <td>${age}</td>
         <td>${patient.sex}</td>
         <td>${patient.contact}</td>
-        <td>${patient.registrationDate || 'N/A'}</td>
-        <td>${patient.lastUpdated || 'N/A'}</td>
+        <td>${formatDateToDDMMYYYY(patient.registrationDate || new Date().toISOString())}</td>
+        <td>${formatDateToDDMMYYYY(patient.lastUpdated || new Date().toISOString())}</td>
         <td>
           <button class="btn btn-warning btn-sm edit-btn" data-id="${patient.patientId}">Edit</button>
           <button class="btn btn-primary btn-sm add-visit-btn" data-id="${patient.patientId}" data-name="${patient.name}" data-sex="${patient.sex}" data-age="${age}">Add Visit</button>
@@ -80,11 +80,11 @@ function editPatient(patientId) {
 
     document.getElementById('facilityName').value = patient.facilityName || '';
     document.getElementById('patientName').value = patient.name || '';
-    document.getElementById('dob').value = patient.dob || '';
+    document.getElementById('dob').value = formatDateToDDMMYYYY(patient.dob || '');
     document.getElementById('age').value = calculateAge(patient.dob);
     document.getElementById('sex').value = patient.sex || '';
     document.getElementById('contact').value = patient.contact || '';
-    document.getElementById('registrationDate').value = patient.registrationDate || '';
+    document.getElementById('registrationDate').value = formatDateToDDMMYYYY(patient.registrationDate || '');
 
     // Populate custom fields
     const container = document.getElementById('customFieldsContainer');
@@ -108,10 +108,8 @@ document.getElementById('patientForm').onsubmit = e => {
 
   const facilityName = document.getElementById('facilityName').value.trim();
   const name = document.getElementById('patientName').value.trim();
-  const dob = document.getElementById('dob').value.trim();
   const sex = document.getElementById('sex').value.trim();
   const contact = document.getElementById('contact').value.trim();
-  const registrationDate = document.getElementById('registrationDate').value.trim();
 
   if (!/^\d{10}$/.test(contact)) {
     alert("Enter a valid 10-digit contact number.");
@@ -120,16 +118,27 @@ document.getElementById('patientForm').onsubmit = e => {
 
   const today = new Date().toISOString().split('T')[0];
   const facilityCode = getRandomCharacters(facilityName);
-  const patientId = editingPatientId || `${facilityCode}-${Date.now().toString().slice(-6)}-${new Date().getFullYear().toString().slice(-2)}`;
+
+  // Extract the year from the registration date
+  const registrationYear = new Date(registrationDate || today).getFullYear().toString().slice(-2);
+
+  const patientId = editingPatientId || `${facilityCode}-${Date.now().toString().slice(-6)}-${registrationYear}`;
+
+  const registrationDate = document.getElementById('registrationDate').value.trim();
+  const dob = document.getElementById('dob').value.trim();
+
+  // Convert dd-mm-yyyy to yyyy-mm-dd for saving
+  const formattedRegistrationDate = registrationDate.split('-').reverse().join('-');
+  const formattedDob = dob.split('-').reverse().join('-');
 
   const patient = {
     patientId,
     facilityName,
     name,
-    dob,
+    dob: formattedDob,
     sex,
     contact,
-    registrationDate: registrationDate || today, // Use the provided date or default to today
+    registrationDate: formattedRegistrationDate || today, // Use the provided date or default to today
     lastUpdated: today, // Update the last updated date
     customFields: {}
   };
@@ -148,6 +157,7 @@ document.getElementById('patientForm').onsubmit = e => {
   editingPatientId = null;
   document.getElementById('patientForm').reset();
   document.getElementById('customFieldsContainer').innerHTML = '';
+  document.getElementById('facilityName').removeAttribute('readonly'); // Make Facility Name editable again
   renderPatientList();
 };
 
@@ -171,16 +181,16 @@ document.getElementById('exportPatientsBtn').onclick = () => {
 
 // Flatpickr for DOB
 flatpickr("#dob", {
-  dateFormat: "Y-m-d",
+  dateFormat: "d-m-Y", // Set to dd-mm-yyyy
   maxDate: "today",
   onChange: (selectedDates, dateStr) => {
-    document.getElementById("age").value = calculateAge(dateStr);
+    document.getElementById("age").value = calculateAge(selectedDates[0]);
   }
 });
 
 // Flatpickr for Date of Registration
 flatpickr("#registrationDate", {
-  dateFormat: "Y-m-d",
+  dateFormat: "d-m-Y", // Set to dd-mm-yyyy
   maxDate: "today" // Prevent future dates
 });
 
@@ -298,3 +308,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 });
+
+function formatDateToDDMMYYYY(dateStr) {
+  const date = new Date(dateStr);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
