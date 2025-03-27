@@ -38,7 +38,7 @@ footer {
 
 /* Logo Styling */
 header img {
-    height: 120px; /* Default size for small screens */
+    height: 150px; /* Default size for small screens */
     margin-right: 15px;
     transition: height 0.3s ease-in-out; /* Smooth resizing */
 }
