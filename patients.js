@@ -107,13 +107,13 @@ document.getElementById('patientForm').onsubmit = e => {
   e.preventDefault();
 
   const facilityName = document.getElementById('facilityName').value.trim();
+  const registrationDate = document.getElementById('registrationDate').value.trim();
   const name = document.getElementById('patientName').value.trim();
   const dob = document.getElementById('dob').value.trim();
   const sex = document.getElementById('sex').value.trim();
   const contact = document.getElementById('contact').value.trim();
-  const registrationDate = document.getElementById('registrationDate').value.trim();
 
-  if (!facilityName || !name || !dob || !sex || !contact || !registrationDate) {
+  if (!facilityName || !registrationDate || !name || !dob || !sex || !contact) {
     alert("All fields are required.");
     return;
   }
@@ -124,12 +124,16 @@ document.getElementById('patientForm').onsubmit = e => {
   }
 
   const today = new Date().toISOString().split('T')[0];
-  const facilityCode = getRandomCharacters(facilityName);
+  const facilityCode = getRandomCharacters(facilityName); // Generate 3 random characters from Facility Name
 
   // Extract the year from the registration date
-  const registrationYear = new Date(registrationDate || today).getFullYear().toString().slice(-2);
+  const registrationYear = new Date(registrationDate).getFullYear().toString().slice(-2);
 
-  const patientId = editingPatientId || `${facilityCode}-${Date.now().toString().slice(-6)}-${registrationYear}`;
+  // Generate a random serial number (3 digits)
+  const serialNumber = Math.floor(100 + Math.random() * 900); // Random number between 100 and 999
+
+  // Generate Patient ID
+  const patientId = editingPatientId || `${facilityCode}-${serialNumber}-${registrationYear}`;
 
   // Convert dd-mm-yyyy to yyyy-mm-dd for saving
   const formattedRegistrationDate = registrationDate.split('-').reverse().join('-');
@@ -142,8 +146,8 @@ document.getElementById('patientForm').onsubmit = e => {
     dob: formattedDob,
     sex,
     contact,
-    registrationDate: formattedRegistrationDate || today, // Use the provided date or default to today
-    lastUpdated: today, // Update the last updated date
+    registrationDate: formattedRegistrationDate,
+    lastUpdated: today,
     customFields: {}
   };
 

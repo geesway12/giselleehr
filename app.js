@@ -1,7 +1,7 @@
 // ✅ Service Worker Registration
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(() => {
-    console.log('Service Worker Registered');
+    console.log('✅ Service Worker Registered');
   });
 }
 
@@ -13,24 +13,22 @@ function generateSummary() {
   const summaryCards = document.getElementById("summaryCards");
   const ageGroupTableBody = document.getElementById("ageGroupTableBody");
 
-  // Clear existing cards and table rows
   summaryCards.innerHTML = "";
   ageGroupTableBody.innerHTML = "";
 
-  // Determine the period and display it
+  // 📆 Determine current view period
   const today = new Date();
   let periodText = "";
-
   switch (periodFilter) {
     case "day":
       periodText = `Day: ${today.toLocaleDateString()}`;
       break;
     case "week":
       const weekNumber = Math.ceil(today.getDate() / 7);
-      periodText = `Week: ${weekNumber}, Year: ${today.getFullYear()}`;
+      periodText = `Week: ${weekNumber}, ${today.getFullYear()}`;
       break;
     case "month":
-      periodText = `Month: ${today.toLocaleString("default", { month: "long" })}, Year: ${today.getFullYear()}`;
+      periodText = `Month: ${today.toLocaleString("default", { month: "long" })}, ${today.getFullYear()}`;
       break;
     case "year":
       periodText = `Year: ${today.getFullYear()}`;
@@ -40,45 +38,70 @@ function generateSummary() {
       break;
   }
 
-  // Update the selected period and table heading
   selectedPeriod.innerHTML = `
     <p><strong>Viewing:</strong> ${periodText}</p>
     <h5>Age Group Distribution (Registered Patients)</h5>
   `;
 
-  // Fetch data from the database
+  // 📊 Fetch data from IndexedDB
   getAllData("patients", patients => {
     getAllData("visits", visits => {
-      // Filter patients by sex
       const filteredPatientsBySex = sexFilter === "all" ? patients : patients.filter(p => p.sex === sexFilter);
-
-      // Filter patients and visits based on the selected period
       const filteredPatients = filterByPeriod(filteredPatientsBySex, periodFilter, "registrationDate");
       const filteredVisits = filterByPeriod(visits, periodFilter, "visitDate");
 
-      // Calculate statistics
       const totalPatients = filteredPatientsBySex.length;
       const totalVisits = visits.length;
       const newPatientsThisPeriod = filteredPatients.length;
       const visitsThisPeriod = filteredVisits.length;
 
-      // Count by age groups
+      // 📈 Age group buckets
       const ageGroups = {
         "<1": filteredPatientsBySex.filter(p => calculateAge(p.dob) < 1).length,
-        "1-4": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 1 && calculateAge(p.dob) <= 4).length,
-        "5-9": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 5 && calculateAge(p.dob) <= 9).length,
-        "10-14": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 10 && calculateAge(p.dob) <= 14).length,
-        "15-19": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 15 && calculateAge(p.dob) <= 19).length,
-        "20-24": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 20 && calculateAge(p.dob) <= 24).length,
-        "25-29": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 25 && calculateAge(p.dob) <= 29).length,
-        "30-34": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 30 && calculateAge(p.dob) <= 34).length,
-        "35-39": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 35 && calculateAge(p.dob) <= 39).length,
-        "40-44": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 40 && calculateAge(p.dob) <= 44).length,
-        "45-49": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 45 && calculateAge(p.dob) <= 49).length,
+        "1-4": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 1 && age <= 4;
+        }).length,
+        "5-9": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 5 && age <= 9;
+        }).length,
+        "10-14": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 10 && age <= 14;
+        }).length,
+        "15-19": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 15 && age <= 19;
+        }).length,
+        "20-24": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 20 && age <= 24;
+        }).length,
+        "25-29": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 25 && age <= 29;
+        }).length,
+        "30-34": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 30 && age <= 34;
+        }).length,
+        "35-39": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 35 && age <= 39;
+        }).length,
+        "40-44": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 40 && age <= 44;
+        }).length,
+        "45-49": filteredPatientsBySex.filter(p => {
+          const age = calculateAge(p.dob);
+          return age >= 45 && age <= 49;
+        }).length,
         "50+": filteredPatientsBySex.filter(p => calculateAge(p.dob) >= 50).length,
       };
 
-      // Summary data for cards
+      // 🧾 Summary Cards
       const summaryData = [
         { title: "Total Patients", value: totalPatients },
         { title: "Total Visits", value: totalVisits },
@@ -86,10 +109,9 @@ function generateSummary() {
         { title: "Visits This Period", value: visitsThisPeriod },
       ];
 
-      // Generate cards
       summaryData.forEach(item => {
         const card = document.createElement("div");
-        card.className = "col-md-3";
+        card.className = "col-md-3 mb-3";
         card.innerHTML = `
           <div class="card text-center equal-card">
             <div class="card-body">
@@ -101,20 +123,17 @@ function generateSummary() {
         summaryCards.appendChild(card);
       });
 
-      // Generate age group table rows
+      // 📋 Age group distribution table
       Object.entries(ageGroups).forEach(([group, count]) => {
         const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${group}</td>
-          <td>${count}</td>
-        `;
+        row.innerHTML = `<td>${group}</td><td>${count}</td>`;
         ageGroupTableBody.appendChild(row);
       });
     });
   });
 }
 
-// Helper function to filter data by period
+// 🧠 Helper: Filter by period
 function filterByPeriod(data, period, dateField) {
   const today = new Date();
   return data.filter(item => {
@@ -123,8 +142,10 @@ function filterByPeriod(data, period, dateField) {
       case "day":
         return date.toDateString() === today.toDateString();
       case "week":
-        const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
-        const weekEnd = new Date(today.setDate(today.getDate() - today.getDay() + 6));
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
         return date >= weekStart && date <= weekEnd;
       case "month":
         return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
@@ -138,7 +159,7 @@ function filterByPeriod(data, period, dateField) {
   });
 }
 
-// Helper function to calculate age
+// 🧠 Helper: Calculate Age
 function calculateAge(dob) {
   const birthDate = new Date(dob);
   const today = new Date();
@@ -150,12 +171,11 @@ function calculateAge(dob) {
   return age;
 }
 
-// Fetch and display summary data on page load
-document.addEventListener('DOMContentLoaded', () => {
+// 🚀 On Load
+document.addEventListener("DOMContentLoaded", () => {
   if (dbReady) {
-    generateSummary(); // Fetch and display summary data
+    generateSummary();
   } else {
-    // Wait for the database to initialize
     window.onDatabaseReady = () => {
       generateSummary();
     };

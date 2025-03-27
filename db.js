@@ -9,16 +9,19 @@ const request = indexedDB.open(DB_NAME, DB_VERSION);
 request.onupgradeneeded = event => {
   db = event.target.result;
 
+  // 🧩 Object store for patients
   if (!db.objectStoreNames.contains('patients')) {
     db.createObjectStore('patients', { keyPath: 'patientId' });
   }
 
+  // 🧩 Object store for visits
   if (!db.objectStoreNames.contains('visits')) {
     db.createObjectStore('visits', { autoIncrement: true });
   }
 
+  // 🧩 Object store for registers (also holds register definitions and entries)
   if (!db.objectStoreNames.contains('registers')) {
-    db.createObjectStore('registers', { autoIncrement: true });
+    db.createObjectStore('registers', { keyPath: 'id' });
   }
 };
 

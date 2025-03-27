@@ -1,4 +1,4 @@
-const CACHE_NAME = 'facility-cache-v2'; // increment on each update
+const CACHE_NAME = 'facility-cache-v2'; // 🔁 Increment on each update
 
 const FILES_TO_CACHE = [
   './',
@@ -17,21 +17,25 @@ const FILES_TO_CACHE = [
   './512-icon.png'
 ];
 
+// ✅ Install: Cache files
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
+      console.log('📦 Caching app shell...');
       return cache.addAll(FILES_TO_CACHE);
     })
   );
 });
 
+// ✅ Activate: Clear old cache versions
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
-            return caches.delete(key); // Clean up old cache
+            console.log(`🧹 Removing old cache: ${key}`);
+            return caches.delete(key);
           }
         })
       );
@@ -39,6 +43,7 @@ self.addEventListener('activate', event => {
   );
 });
 
+// ✅ Fetch: Serve from cache first
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(response => {
