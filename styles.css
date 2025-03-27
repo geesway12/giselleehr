@@ -38,20 +38,38 @@ footer {
 
 /* Logo Styling */
 header img {
-    height: 150px; /* Default size for small screens */
+    height: 80px; /* Default size for small mobile screens */
     margin-right: 15px;
     transition: height 0.3s ease-in-out; /* Smooth resizing */
 }
 
+@media (min-width: 480px) {
+    header img {
+        height: 100px; /* Regular mobile screens */
+    }
+}
+
 @media (min-width: 768px) {
     header img {
-        height: 150px; /* Medium size for tablets */
+        height: 120px; /* Tablets */
+    }
+}
+
+@media (min-width: 992px) {
+    header img {
+        height: 150px; /* Laptops */
     }
 }
 
 @media (min-width: 1200px) {
     header img {
-        height: 180px; /* Larger size for desktops and laptops */
+        height: 180px; /* Desktops */
+    }
+}
+
+@media (min-width: 1600px) {
+    header img {
+        height: 200px; /* Large screens */
     }
 }
 
