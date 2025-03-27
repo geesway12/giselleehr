@@ -40,7 +40,11 @@ function generateSummary() {
       break;
   }
 
-  selectedPeriod.innerHTML = `<p><strong>Viewing:</strong> ${periodText}</p>`;
+  // Update the selected period and table heading
+  selectedPeriod.innerHTML = `
+    <p><strong>Viewing:</strong> ${periodText}</p>
+    <h5>Age Group Distribution (Registered Patients)</h5>
+  `;
 
   // Fetch data from the database
   getAllData("patients", patients => {
