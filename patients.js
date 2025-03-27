@@ -40,7 +40,7 @@ function renderPatientList() {
         <td>${age}</td>
         <td>${patient.sex}</td>
         <td>${patient.contact}</td>
-        <td>${patient.registrationDate}</td>
+        <td>${patient.registrationDate || 'N/A'}</td>
         <td>${patient.lastUpdated || 'N/A'}</td>
         <td>
           <button class="btn btn-warning btn-sm edit-btn" data-id="${patient.patientId}">Edit</button>
@@ -84,6 +84,7 @@ function editPatient(patientId) {
     document.getElementById('age').value = calculateAge(patient.dob);
     document.getElementById('sex').value = patient.sex || '';
     document.getElementById('contact').value = patient.contact || '';
+    document.getElementById('registrationDate').value = patient.registrationDate || '';
 
     // Populate custom fields
     const container = document.getElementById('customFieldsContainer');
@@ -110,6 +111,7 @@ document.getElementById('patientForm').onsubmit = e => {
   const dob = document.getElementById('dob').value.trim();
   const sex = document.getElementById('sex').value.trim();
   const contact = document.getElementById('contact').value.trim();
+  const registrationDate = document.getElementById('registrationDate').value.trim();
 
   if (!/^\d{10}$/.test(contact)) {
     alert("Enter a valid 10-digit contact number.");
@@ -127,7 +129,7 @@ document.getElementById('patientForm').onsubmit = e => {
     dob,
     sex,
     contact,
-    registrationDate: editingPatientId ? undefined : today, // Preserve original registration date
+    registrationDate: registrationDate || today, // Use the provided date or default to today
     lastUpdated: today, // Update the last updated date
     customFields: {}
   };
@@ -174,6 +176,12 @@ flatpickr("#dob", {
   onChange: (selectedDates, dateStr) => {
     document.getElementById("age").value = calculateAge(dateStr);
   }
+});
+
+// Flatpickr for Date of Registration
+flatpickr("#registrationDate", {
+  dateFormat: "Y-m-d",
+  maxDate: "today" // Prevent future dates
 });
 
 // Show Add Field Popup
