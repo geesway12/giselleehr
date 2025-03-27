@@ -34,7 +34,6 @@ function searchPatient() {
       document.getElementById("displayPatientName").textContent = patient.name || "N/A";
       document.getElementById("displaySex").textContent = patient.sex || "N/A";
       document.getElementById("displayAge").textContent = calculateAge(patient.dob) || "N/A";
-      document.getElementById("displayContact").textContent = patient.contact || "N/A";
     } else {
       alert("Patient not found.");
       document.getElementById("patientDetails").style.display = "none";
@@ -75,6 +74,7 @@ document.getElementById("visitForm").onsubmit = event => {
     investigations: investigations,
     diagnosis: diagnosis,
     treatment: treatment,
+    createdAt: new Date().toISOString(), // Add a timestamp for when the visit was created
     customFields: {}
   };
 
@@ -95,6 +95,7 @@ document.getElementById("visitForm").onsubmit = event => {
 
   // Clear the form for new entry
   document.getElementById("visitForm").reset();
+  document.getElementById("patientDetails").style.display = "none"; // Hide patient details
   renderVisitList(); // Refresh the visit list
 };
 
@@ -137,6 +138,11 @@ document.getElementById("exportVisitsBtn").onclick = () => {
       PatientID: visit.patientId,
       Reason: visit.reason,
       Notes: visit.notes,
+      History: visit.history || "N/A",
+      ExaminationFindings: visit.examinationFindings || "N/A",
+      Investigations: visit.investigations || "N/A",
+      Diagnosis: visit.diagnosis || "N/A",
+      Treatment: visit.treatment || "N/A",
       CreatedAt: formatDate(visit.createdAt) // Format createdAt date as dd-mm-yyyy
     }));
     const wb = XLSX.utils.book_new();

@@ -108,8 +108,15 @@ document.getElementById('patientForm').onsubmit = e => {
 
   const facilityName = document.getElementById('facilityName').value.trim();
   const name = document.getElementById('patientName').value.trim();
+  const dob = document.getElementById('dob').value.trim();
   const sex = document.getElementById('sex').value.trim();
   const contact = document.getElementById('contact').value.trim();
+  const registrationDate = document.getElementById('registrationDate').value.trim();
+
+  if (!facilityName || !name || !dob || !sex || !contact || !registrationDate) {
+    alert("All fields are required.");
+    return;
+  }
 
   if (!/^\d{10}$/.test(contact)) {
     alert("Enter a valid 10-digit contact number.");
@@ -123,9 +130,6 @@ document.getElementById('patientForm').onsubmit = e => {
   const registrationYear = new Date(registrationDate || today).getFullYear().toString().slice(-2);
 
   const patientId = editingPatientId || `${facilityCode}-${Date.now().toString().slice(-6)}-${registrationYear}`;
-
-  const registrationDate = document.getElementById('registrationDate').value.trim();
-  const dob = document.getElementById('dob').value.trim();
 
   // Convert dd-mm-yyyy to yyyy-mm-dd for saving
   const formattedRegistrationDate = registrationDate.split('-').reverse().join('-');
@@ -167,14 +171,27 @@ document.getElementById('exportPatientsBtn').onclick = () => {
     const exportData = data.map(p => {
       const age = calculateAge(p.dob);
       return {
-        ...p,
-        age,
+        PatientID: p.patientId,
+        FacilityName: p.facilityName,
+        Name: p.name,
+        DOB: formatDateToDDMMYYYY(p.dob),
+        Age: age,
+        Sex: p.sex,
+        Contact: p.contact,
+        RegistrationDate: formatDateToDDMMYYYY(p.registrationDate),
+        LastUpdated: formatDateToDDMMYYYY(p.lastUpdated),
         ...p.customFields // Include custom fields
       };
     });
+
+    // Create a new workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Append the worksheet to the workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Patients');
+
+    // Save the workbook as a file
     XLSX.writeFile(wb, 'Patients.xlsx');
   });
 };
