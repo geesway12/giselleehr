@@ -102,73 +102,6 @@ function editPatient(patientId) {
   });
 }
 
-// Handle Add Patient form
-document.getElementById('patientForm').onsubmit = e => {
-  e.preventDefault();
-
-  const facilityName = document.getElementById('facilityName').value.trim();
-  const registrationDate = document.getElementById('registrationDate').value.trim();
-  const name = document.getElementById('patientName').value.trim();
-  const dob = document.getElementById('dob').value.trim();
-  const sex = document.getElementById('sex').value.trim();
-  const contact = document.getElementById('contact').value.trim();
-
-  if (!facilityName || !registrationDate || !name || !dob || !sex || !contact) {
-    alert("All fields are required.");
-    return;
-  }
-
-  if (!/^\d{10}$/.test(contact)) {
-    alert("Enter a valid 10-digit contact number.");
-    return;
-  }
-
-  const today = new Date().toISOString().split('T')[0];
-  const facilityCode = getRandomCharacters(facilityName); // Generate 3 random characters from Facility Name
-
-  // Extract the year from the registration date
-  const registrationYear = new Date(registrationDate).getFullYear().toString().slice(-2);
-
-  // Generate a random serial number (3 digits)
-  const serialNumber = Math.floor(100 + Math.random() * 900); // Random number between 100 and 999
-
-  // Generate Patient ID
-  const patientId = editingPatientId || `${facilityCode}-${serialNumber}-${registrationYear}`;
-
-  // Convert dd-mm-yyyy to yyyy-mm-dd for saving
-  const formattedRegistrationDate = registrationDate.split('-').reverse().join('-');
-  const formattedDob = dob.split('-').reverse().join('-');
-
-  const patient = {
-    patientId,
-    facilityName,
-    name,
-    dob: formattedDob,
-    sex,
-    contact,
-    registrationDate: formattedRegistrationDate,
-    lastUpdated: today,
-    customFields: {}
-  };
-
-  // Collect custom fields
-  document.querySelectorAll('.custom-field').forEach(field => {
-    const key = field.querySelector('.field-name').value.trim();
-    const val = field.querySelector('.field-value').value.trim();
-    if (key && val) patient.customFields[key] = val;
-  });
-
-  saveData('patients', patient);
-  alert(editingPatientId ? 'Patient updated!' : 'Patient added!');
-
-  // Reset
-  editingPatientId = null;
-  document.getElementById('patientForm').reset();
-  document.getElementById('customFieldsContainer').innerHTML = '';
-  document.getElementById('facilityName').removeAttribute('readonly'); // Make Facility Name editable again
-  renderPatientList();
-};
-
 // Export Button
 document.getElementById('exportPatientsBtn').onclick = () => {
   getAllData('patients', data => {
@@ -320,6 +253,68 @@ renderCustomFields();
 
 // Fetch and display patients on page load
 document.addEventListener('DOMContentLoaded', () => {
+  const facilityNameField = document.getElementById('facilityName');
+  const storedFacilityName = localStorage.getItem('facilityName');
+
+  // Pre-fill Facility Name if it exists in localStorage
+  if (storedFacilityName) {
+    facilityNameField.value = storedFacilityName;
+    facilityNameField.setAttribute('readonly', true);
+  }
+
+  document.getElementById('patientForm').onsubmit = e => {
+    e.preventDefault();
+
+    const facilityName = facilityNameField.value.trim();
+    const registrationDate = document.getElementById('registrationDate').value.trim();
+    const name = document.getElementById('patientName').value.trim();
+    const dob = document.getElementById('dob').value.trim();
+    const sex = document.getElementById('sex').value.trim();
+    const contact = document.getElementById('contact').value.trim();
+
+    if (!facilityName || !registrationDate || !name || !dob || !sex || !contact) {
+      alert("All fields are required.");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(contact)) {
+      alert("Enter a valid 10-digit contact number.");
+      return;
+    }
+
+    // Save Facility Name to localStorage if not already saved
+    if (!storedFacilityName) {
+      localStorage.setItem('facilityName', facilityName);
+      facilityNameField.setAttribute('readonly', true);
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const facilityCode = getRandomCharacters(facilityName);
+    const registrationYear = new Date(registrationDate).getFullYear().toString().slice(-2);
+    const serialNumber = Math.floor(100 + Math.random() * 900);
+    const patientId = `${facilityCode}-${serialNumber}-${registrationYear}`;
+
+    const formattedRegistrationDate = registrationDate.split('-').reverse().join('-');
+    const formattedDob = dob.split('-').reverse().join('-');
+
+    const patient = {
+      patientId,
+      facilityName,
+      name,
+      dob: formattedDob,
+      sex,
+      contact,
+      registrationDate: formattedRegistrationDate,
+      lastUpdated: today,
+      customFields: {}
+    };
+
+    saveData('patients', patient);
+    alert('Patient added successfully!');
+    document.getElementById('patientForm').reset();
+    renderPatientList();
+  };
+
   if (dbReady) {
     renderPatientList(); // Fetch and display patients
   } else {

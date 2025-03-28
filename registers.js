@@ -1,79 +1,92 @@
-// Save new register structure
-document.getElementById('createRegisterBtn').onclick = () => {
-  const registerName = prompt("Enter Register Name (e.g., ART Register):");
+// Create new register
+document.getElementById('createRegisterBtn').onclick = async () => {
+  const registerId = prompt("Enter Register ID (e.g., HTC, ART):");
+  if (!registerId) return;
+
+  const registerName = prompt("Enter Register Name (e.g., HIV Testing Register):");
   if (!registerName) return;
 
   let customFields = [];
 
   while (confirm("Add a custom field?")) {
-    let fieldName = prompt("Enter field name:");
-    if (!fieldName) continue;
+    let name = prompt("Enter field name (e.g., HIV Status):");
+    if (!name) continue;
 
-    let fieldType = prompt("Enter data type (text, number, date, select_one, select_multiple, file):");
-    if (!fieldType) continue;
+    let type = prompt("Enter data type (text, number, date, select_one, select_multiple, textarea):");
+    if (!type) continue;
+
+    let convertedType = type === 'select_one' ? 'select'
+                      : type === 'select_multiple' ? 'checkbox'
+                      : type;
 
     let options = [];
-    if (fieldType === 'select_one' || fieldType === 'select_multiple') {
+    if (convertedType === 'select' || convertedType === 'checkbox') {
       let opts = prompt("Enter options (comma-separated):");
       options = opts ? opts.split(',').map(opt => opt.trim()) : [];
     }
 
     customFields.push({
-      name: fieldName,
-      type: fieldType,
+      name: name.toLowerCase().replace(/\s+/g, '_'),
+      label: name,
+      type: convertedType,
       options: options
     });
   }
 
   const register = {
-    registerName,
-    customFields,
+    id: registerId,
+    name: registerName,
+    fields: customFields,
     createdAt: new Date().toISOString()
   };
 
-  saveData('registers', register);
-  alert("✅ Register saved: " + registerName);
+  const db = await getDB();
+  await db.put('registers', register, registerId);
+  alert(`✅ Register "${registerName}" saved.`);
   renderRegisterButtons();
 };
 
-// Render saved registers as buttons
-function renderRegisterButtons() {
-  getAllData('registers', data => {
-    const registerList = document.getElementById('registerList');
-    registerList.innerHTML = '';
+// Render register buttons
+async function renderRegisterButtons() {
+  const db = await getDB();
+  const registers = await db.getAll('registers');
 
-    if (data.length === 0) {
-      registerList.innerHTML = '<p>No registers created yet.</p>';
-      return;
-    }
+  const container = document.getElementById('registerList');
+  container.innerHTML = '';
 
-    data.forEach(register => {
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-outline-primary m-2';
-      btn.textContent = register.registerName;
-      btn.onclick = () => {
-        window.location.href = `register-form.html?name=${encodeURIComponent(register.registerName)}`;
-      };
-      registerList.appendChild(btn);
-    });
+  if (!registers.length) {
+    container.innerHTML = '<p>No registers created yet.</p>';
+    return;
+  }
+
+  registers.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline-primary';
+    btn.textContent = r.name;
+    btn.onclick = () => {
+      window.location.href = `register-form.html?registerId=${encodeURIComponent(r.id)}`;
+    };
+    container.appendChild(btn);
   });
 }
 
 // Export registers
-document.getElementById('exportRegistersBtn').onclick = () => {
-  getAllData('registers', data => {
-    const exportData = data.map(r => ({
-      RegisterName: r.registerName,
-      CreatedAt: r.createdAt,
-      Fields: r.customFields.map(f => `${f.name} (${f.type})`).join(', ')
-    }));
+document.getElementById('exportRegistersBtn').onclick = async () => {
+  const db = await getDB();
+  const registers = await db.getAll('registers');
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Registers');
-    XLSX.writeFile(wb, 'Registers.xlsx');
-  });
+  const exportData = registers.map(r => ({
+    RegisterID: r.id,
+    RegisterName: r.name,
+    CreatedAt: r.createdAt,
+    Fields: r.fields.map(f => `${f.label} (${f.type})`).join(', ')
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Registers');
+  XLSX.writeFile(wb, 'Registers.xlsx');
 };
 
-// On load
+// Load on page ready
 document.addEventListener('DOMContentLoaded', renderRegisterButtons);

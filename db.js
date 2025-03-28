@@ -3,26 +3,24 @@ const DB_VERSION = 1;
 let db;
 let dbReady = false;
 
-// ✅ Open IndexedDB
 const request = indexedDB.open(DB_NAME, DB_VERSION);
 
 request.onupgradeneeded = event => {
   db = event.target.result;
 
-  // 🧩 Object store for patients
   if (!db.objectStoreNames.contains('patients')) {
     db.createObjectStore('patients', { keyPath: 'patientId' });
   }
 
-  // 🧩 Object store for visits
   if (!db.objectStoreNames.contains('visits')) {
     db.createObjectStore('visits', { autoIncrement: true });
   }
 
-  // 🧩 Object store for registers (also holds register definitions and entries)
   if (!db.objectStoreNames.contains('registers')) {
     db.createObjectStore('registers', { keyPath: 'id' });
   }
+
+  // NOTE: We do NOT create dynamic register stores here because they are added later
 };
 
 request.onsuccess = event => {
@@ -30,7 +28,6 @@ request.onsuccess = event => {
   dbReady = true;
   console.log('✅ IndexedDB initialized successfully');
 
-  // 🔔 Notify other scripts if ready callback is set
   if (typeof window.onDatabaseReady === 'function') {
     window.onDatabaseReady();
   }
@@ -40,8 +37,36 @@ request.onerror = event => {
   console.error('❌ IndexedDB error:', event.target.errorCode);
 };
 
-// ✅ Save data to store
-function saveData(storeName, data) {
+// ✅ Utility to create store dynamically if it doesn't exist
+async function ensureStoreExists(storeName) {
+  if (db.objectStoreNames.contains(storeName)) return;
+
+  db.close();
+  const newVersion = db.version + 1;
+
+  const upgradeRequest = indexedDB.open(DB_NAME, newVersion);
+
+  upgradeRequest.onupgradeneeded = event => {
+    const upgradeDB = event.target.result;
+    if (!upgradeDB.objectStoreNames.contains(storeName)) {
+      upgradeDB.createObjectStore(storeName, { autoIncrement: true });
+      console.log(`📦 Created object store: ${storeName}`);
+    }
+  };
+
+  upgradeRequest.onsuccess = event => {
+    db = event.target.result;
+    console.log(`🔄 Database upgraded to version ${newVersion}`);
+  };
+
+  upgradeRequest.onerror = event => {
+    console.error('❌ Failed to create new store:', event.target.errorCode);
+  };
+}
+
+// ✅ Save data to a store (with optional dynamic store creation)
+async function saveData(storeName, data) {
+  await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.put(data);
@@ -55,8 +80,9 @@ function saveData(storeName, data) {
   };
 }
 
-// ✅ Get all records from store
-function getAllData(storeName, callback) {
+// ✅ Get all records
+async function getAllData(storeName, callback) {
+  await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readonly');
   const store = tx.objectStore(storeName);
   const data = [];
@@ -76,23 +102,22 @@ function getAllData(storeName, callback) {
   };
 }
 
-// ✅ Get one record by key
-function getDataByKey(storeName, key, callback) {
+// ✅ Get single record by key
+async function getDataByKey(storeName, key, callback) {
+  await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readonly');
   const store = tx.objectStore(storeName);
   const request = store.get(key);
 
-  request.onsuccess = () => {
-    callback(request.result);
-  };
-
+  request.onsuccess = () => callback(request.result);
   request.onerror = event => {
     console.error(`❌ Error retrieving from ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Delete a record by key
-function deleteData(storeName, key) {
+// ✅ Delete by key
+async function deleteData(storeName, key) {
+  await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.delete(key);
@@ -106,8 +131,9 @@ function deleteData(storeName, key) {
   };
 }
 
-// ✅ Clear entire store
-function clearStore(storeName) {
+// ✅ Clear a whole store
+async function clearStore(storeName) {
+  await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.clear();

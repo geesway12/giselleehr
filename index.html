@@ -24,7 +24,17 @@
   <div class="container-box">
     <h3 class="mb-3">Facility Summary Dashboard</h3>
 
-    <!-- 📅 Filter Section -->
+    <!-- Report Type Filter -->
+    <div class="form-group mb-3 text-start">
+      <label for="reportType" class="form-label">Select Report:</label>
+      <select id="reportType" class="form-select w-auto d-inline-block" onchange="generateSummary()">
+        <option value="patients">Patients</option>
+        <option value="visits">Visits</option>
+        <!-- 📦 More registers will be added dynamically -->
+      </select>
+    </div>
+
+    <!-- Period + Sex Filter -->
     <div class="form-group mb-4 text-start">
       <label for="periodFilter" class="form-label">Filter by Period:</label>
       <select id="periodFilter" class="form-select w-auto d-inline-block" onchange="generateSummary()">
@@ -44,35 +54,44 @@
     </div>
 
     <!-- 🕒 Selected Period -->
-    <div id="selectedPeriod" class="mb-4 text-start">
-    </div>
+    <div id="selectedPeriod" class="mb-4 text-start"></div>
 
     <!-- 🧾 Summary Cards -->
     <div id="summaryCards" class="row g-3">
-      <!-- Cards will be dynamically rendered here -->
+      <div class="col-md-3">
+        <div class="text-center">
+          <p class="card-label">Total Patients</p>
+          <div class="card text-center equal-card">
+            <div class="card-body">
+              <p class="card-value display-6">123</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-center">
+          <p class="card-label">Total Visits</p>
+          <div class="card text-center equal-card">
+            <div class="card-body">
+              <p class="card-value display-6">456</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 📊 Age Group Table -->
-    <div class="mt-5">
-      <h4>Age Group Distribution</h4>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Age Group</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody id="ageGroupTableBody">
-          <!-- Age group rows will be dynamically rendered here -->
-        </tbody>
-      </table>
-    </div>
+    <!-- 📋 Data Table -->
+    <div id="dataTable" class="mt-5"></div>
+
+    <!-- 📈 Chart Section -->
+    <div id="summaryChart" class="mt-5"></div>
   </div>
 
   <footer>
     <p>&copy; 2025 giselle EHR System</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Optional: For charts -->
   <script src="db.js"></script>
   <script src="app.js"></script>
 </body>
