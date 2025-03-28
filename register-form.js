@@ -1,169 +1,190 @@
-let currentRegisterId = '';
-let registerFields = [];
+let currentRegister = null;
+let currentPatient = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  currentRegisterId = params.get('registerId');
+  const params = new URLSearchParams(location.search);
+  const registerName = params.get('name');
+  document.getElementById('registerTitle').textContent = registerName;
 
-  if (!currentRegisterId) {
-    alert("No register ID found.");
-    return;
-  }
+  flatpickr('#dateOfService', { dateFormat: 'Y-m-d', maxDate: 'today' });
 
-  document.title = `Register: ${currentRegisterId}`;
-  document.getElementById('registerTitle').innerText = `${currentRegisterId} Register`;
+  // Load register definition
+  getAllData('registers', registers => {
+    currentRegister = registers.find(r => r.name === registerName);
+    if (!currentRegister) {
+      alert('Register not found!');
+      return;
+    }
 
-  loadRegisterFields();
-  loadRegisterRecords();
-
-  document.getElementById('dynamicRegisterForm').addEventListener('submit', saveRegisterEntry);
-  document.getElementById('filterDateBtn').addEventListener('click', loadRegisterRecords);
-  document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+    renderFields(currentRegister.fields);
+    loadEntries();
+  });
 });
 
-async function loadRegisterFields() {
-  const db = await getDB();
-  const register = await db.get('registers', currentRegisterId);
-  registerFields = register?.fields || [];
+// 🔍 Search patient by ID
+function searchPatient() {
+  const id = document.getElementById('searchPatientID').value.trim();
+  if (!id) return alert('Enter Patient ID');
 
-  const container = document.getElementById('customFieldsContainer');
+  getDataByKey('patients', id, patient => {
+    if (!patient) return alert('Patient not found.');
+
+    currentPatient = patient;
+    document.getElementById('hiddenPatientID').value = patient.patientId;
+    document.getElementById('displayPatientName').textContent = patient.name;
+    document.getElementById('displaySex').textContent = patient.sex;
+    document.getElementById('displayAge').textContent = patient.age;
+
+    document.getElementById('patientDetails').style.display = 'block';
+    document.getElementById('dynamicRegisterForm').style.display = 'block';
+  });
+}
+
+// 🧾 Render fields dynamically
+function renderFields(fields) {
+  const container = document.getElementById('dynamicFields');
   container.innerHTML = '';
 
-  registerFields.forEach(field => {
+  fields.forEach(field => {
     const div = document.createElement('div');
     div.className = 'form-group mb-3';
+    div.innerHTML = `<label>${field.label}</label>`;
 
-    const label = document.createElement('label');
-    label.textContent = field.label;
-    div.appendChild(label);
+    let input = '';
+    const nameAttr = `name="${field.label}"`;
 
-    let input;
     switch (field.type) {
       case 'text':
       case 'number':
+        input = `<input type="${field.type}" class="form-control" ${nameAttr}>`;
+        break;
+      case 'decimal':
+        input = `<input type="number" step="any" class="form-control" ${nameAttr}>`;
+        break;
       case 'date':
-        input = document.createElement('input');
-        input.type = field.type;
+        input = `<input type="date" class="form-control" ${nameAttr}>`;
         break;
       case 'textarea':
-        input = document.createElement('textarea');
+        input = `<textarea class="form-control" ${nameAttr}></textarea>`;
         break;
-      case 'select':
-        input = document.createElement('select');
-        field.options?.forEach(opt => {
-          const option = document.createElement('option');
-          option.value = opt;
-          option.textContent = opt;
-          input.appendChild(option);
-        });
+      case 'select_one':
+        input = `<select class="form-control" ${nameAttr}>
+          <option value="">Select</option>
+          ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+        </select>`;
         break;
-      case 'checkbox':
-        input = document.createElement('div');
-        field.options?.forEach(opt => {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.name = field.name;
-          checkbox.value = opt;
-          checkbox.classList.add('form-check-input', 'me-1');
-          const label = document.createElement('label');
-          label.classList.add('me-3');
-          label.appendChild(checkbox);
-          label.appendChild(document.createTextNode(opt));
-          input.appendChild(label);
-        });
+      case 'multiselect':
+        input = field.options.map(opt => `
+          <label class="me-3"><input type="checkbox" value="${opt}" name="${field.label}"> ${opt}</label>
+        `).join(' ');
         break;
+      case 'image':
+      case 'file':
+        input = `<input type="file" class="form-control" ${nameAttr}>`;
+        break;
+      default:
+        input = `<input type="text" class="form-control" ${nameAttr}>`;
     }
 
-    input.id = field.name;
-    input.classList.add('form-control');
-    div.appendChild(input);
+    div.innerHTML += input;
     container.appendChild(div);
   });
 }
 
-async function searchPatient() {
-  const patientID = document.getElementById('searchPatientID').value.trim();
-  if (!patientID) return alert("Please enter a Patient ID.");
-
-  const db = await getDB();
-  const patient = await db.get('patients', patientID);
-  if (!patient) return alert("Patient not found.");
-
-  document.getElementById('displayPatientName').innerText = patient.patientName;
-  document.getElementById('displaySex').innerText = patient.sex;
-  document.getElementById('displayAge').innerText = patient.age;
-  document.getElementById('hiddenPatientID').value = patientID;
-  document.getElementById('patientDetails').style.display = 'block';
-}
-
-async function saveRegisterEntry(e) {
+// 💾 Save new record
+document.getElementById('dynamicRegisterForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const patientID = document.getElementById('hiddenPatientID').value;
-  const dateOfService = document.getElementById('dateOfService').value;
-  if (!patientID || !dateOfService) return alert("Patient and Date of Service are required.");
 
-  const record = {
+  const patientID = currentPatient?.patientId;
+  const dateOfService = document.getElementById('dateOfService').value.trim();
+  if (!patientID || !dateOfService) return alert('Please complete patient and date fields.');
+
+  const entry = {
+    id: `entry-${Date.now()}`,
     patientID,
+    patientName: currentPatient.name,
+    sex: currentPatient.sex,
+    age: currentPatient.age,
     dateOfService,
-    timestamp: new Date().toISOString()
+    createdAt: new Date().toISOString()
   };
 
-  registerFields.forEach(field => {
-    const el = document.getElementById(field.name);
-    if (field.type === 'checkbox') {
-      const checkboxes = el.querySelectorAll('input[type="checkbox"]:checked');
-      record[field.name] = Array.from(checkboxes).map(cb => cb.value);
+  currentRegister.fields.forEach(field => {
+    if (field.type === 'multiselect') {
+      const selected = Array.from(document.querySelectorAll(`input[name="${field.label}"]:checked`)).map(cb => cb.value);
+      entry[field.label] = selected;
     } else {
-      record[field.name] = el.value;
+      const input = document.querySelector(`[name="${field.label}"]`);
+      entry[field.label] = input?.value || '';
     }
   });
 
-  const db = await getDB();
-  const key = `${currentRegisterId}-${Date.now()}`;
-  await db.put(`register-${currentRegisterId}`, record, key);
+  await saveData(`register-${currentRegister.id}`, entry);
+  alert('✅ Entry saved!');
+  e.target.reset();
 
-  alert("Record saved.");
-  document.getElementById('dynamicRegisterForm').reset();
   document.getElementById('patientDetails').style.display = 'none';
-  loadRegisterRecords();
-}
+  document.getElementById('dynamicRegisterForm').style.display = 'none';
+  currentPatient = null;
+  loadEntries();
+});
 
-async function loadRegisterRecords() {
-  const db = await getDB();
-  const all = await db.getAll(`register-${currentRegisterId}`);
-  const filterDate = document.getElementById('filterDate').value;
-  const tbody = document.getElementById('registerTableBody');
-  const thead = document.getElementById('registerTableHeader');
+// 📋 Load table entries
+function loadEntries() {
+  const head = document.getElementById('registerTableHead');
+  const body = document.getElementById('registerTableBody');
+  head.innerHTML = '';
+  body.innerHTML = '';
 
-  tbody.innerHTML = '';
-  thead.innerHTML = '';
+  const headers = ['Patient ID', 'Name', 'Sex', 'Age', 'Date of Service', ...currentRegister.fields.map(f => f.label), 'Actions'];
+  head.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
 
-  const columns = ['patientID', 'dateOfService', ...registerFields.map(f => f.name)];
+  getAllData(`register-${currentRegister.id}`, records => {
+    records.reverse().forEach(entry => {
+      const row = document.createElement('tr');
 
-  columns.forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col.replace(/([A-Z])/g, ' $1');
-    thead.appendChild(th);
-  });
+      const cells = [
+        entry.patientID,
+        entry.patientName,
+        entry.sex,
+        entry.age,
+        entry.dateOfService,
+        ...currentRegister.fields.map(f =>
+          Array.isArray(entry[f.label]) ? entry[f.label].join(', ') : entry[f.label] || ''
+        ),
+        `<button class="btn btn-sm btn-danger" onclick="deleteEntry('${entry.id}')">Delete</button>`
+      ];
 
-  const filtered = filterDate ? all.filter(r => r.dateOfService === filterDate) : all;
-
-  filtered.forEach(entry => {
-    const tr = document.createElement('tr');
-    columns.forEach(col => {
-      const td = document.createElement('td');
-      const val = entry[col];
-      td.textContent = Array.isArray(val) ? val.join(', ') : val || '';
-      tr.appendChild(td);
+      row.innerHTML = cells.map(c => `<td>${c}</td>`).join('');
+      body.appendChild(row);
     });
-    tbody.appendChild(tr);
   });
 }
 
-function exportToExcel() {
-  const wb = XLSX.utils.book_new();
-  const table = document.querySelector("table");
-  const ws = XLSX.utils.table_to_sheet(table);
-  XLSX.utils.book_append_sheet(wb, ws, "RegisterRecords");
-  XLSX.writeFile(wb, `${currentRegisterId}-records.xlsx`);
+// ❌ Delete entry
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  deleteData(`register-${currentRegister.id}`, id, loadEntries);
 }
+
+// 📤 Export to Excel
+document.getElementById('exportRegisterBtn').addEventListener('click', () => {
+  getAllData(`register-${currentRegister.id}`, records => {
+    const data = records.map(r => ({
+      PatientID: r.patientID,
+      Name: r.patientName,
+      Sex: r.sex,
+      Age: r.age,
+      DateOfService: r.dateOfService,
+      ...Object.fromEntries(currentRegister.fields.map(f => [
+        f.label,
+        Array.isArray(r[f.label]) ? r[f.label].join(', ') : r[f.label] || ''
+      ]))
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, currentRegister.name);
+    XLSX.writeFile(wb, `${currentRegister.name}.xlsx`);
+  });
+});

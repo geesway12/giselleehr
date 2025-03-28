@@ -182,6 +182,7 @@ label {
   border-collapse: collapse;
   width: 100%;
   background-color: transparent; /* Remove table background */
+  font-size: 0.9rem;
 }
 
 .table th,
@@ -206,6 +207,10 @@ label {
     .container-box {
         max-width: 90%;
         margin: 20px auto;
+    }
+
+    .card-header {
+        text-align: center;
     }
 }
 
@@ -388,6 +393,11 @@ button:hover {
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
   background-color: transparent; /* No background */
+}
+
+.card-header {
+  font-size: 1.25rem;
+  font-weight: bold;
 }
 
 .card-title {

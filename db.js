@@ -20,13 +20,15 @@ request.onupgradeneeded = event => {
     db.createObjectStore('registers', { keyPath: 'id' });
   }
 
-  // NOTE: We do NOT create dynamic register stores here because they are added later
+  if (!db.objectStoreNames.contains('register_entries')) {
+    db.createObjectStore('register_entries', { autoIncrement: true });
+  }
 };
 
 request.onsuccess = event => {
   db = event.target.result;
   dbReady = true;
-  console.log('✅ IndexedDB initialized successfully');
+  console.log('✅ IndexedDB initialized');
 
   if (typeof window.onDatabaseReady === 'function') {
     window.onDatabaseReady();
@@ -37,50 +39,47 @@ request.onerror = event => {
   console.error('❌ IndexedDB error:', event.target.errorCode);
 };
 
-// ✅ Utility to create store dynamically if it doesn't exist
 async function ensureStoreExists(storeName) {
   if (db.objectStoreNames.contains(storeName)) return;
 
   db.close();
   const newVersion = db.version + 1;
-
   const upgradeRequest = indexedDB.open(DB_NAME, newVersion);
 
   upgradeRequest.onupgradeneeded = event => {
-    const upgradeDB = event.target.result;
-    if (!upgradeDB.objectStoreNames.contains(storeName)) {
-      upgradeDB.createObjectStore(storeName, { autoIncrement: true });
-      console.log(`📦 Created object store: ${storeName}`);
-    }
+    const upgradeDb = event.target.result;
+    upgradeDb.createObjectStore(storeName, { autoIncrement: true });
+    console.log(`📦 Created store: ${storeName}`);
   };
 
   upgradeRequest.onsuccess = event => {
     db = event.target.result;
-    console.log(`🔄 Database upgraded to version ${newVersion}`);
+    console.log(`🔄 DB upgraded to version ${newVersion}`);
   };
 
   upgradeRequest.onerror = event => {
-    console.error('❌ Failed to create new store:', event.target.errorCode);
+    console.error('❌ Store creation error:', event.target.errorCode);
   };
 }
 
-// ✅ Save data to a store (with optional dynamic store creation)
-async function saveData(storeName, data) {
+// Save data
+async function saveData(storeName, data, callback) {
   await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.put(data);
 
   request.onsuccess = () => {
-    console.log(`✅ Data saved to ${storeName}:`, data);
+    console.log(`✅ Saved to ${storeName}`, data);
+    if (callback) callback();
   };
 
   request.onerror = event => {
-    console.error(`❌ Error saving to ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Failed to save to ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Get all records
+// Get all data
 async function getAllData(storeName, callback) {
   await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readonly');
@@ -98,11 +97,11 @@ async function getAllData(storeName, callback) {
   };
 
   tx.onerror = event => {
-    console.error(`❌ Error reading from ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Error reading ${storeName}:`, event.target.errorCode);
   };
 }
 
-// ✅ Get single record by key
+// Get by key
 async function getDataByKey(storeName, key, callback) {
   await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readonly');
@@ -111,38 +110,31 @@ async function getDataByKey(storeName, key, callback) {
 
   request.onsuccess = () => callback(request.result);
   request.onerror = event => {
-    console.error(`❌ Error retrieving from ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Failed to get from ${storeName}`, event.target.errorCode);
   };
 }
 
-// ✅ Delete by key
-async function deleteData(storeName, key) {
+// Delete by key
+async function deleteData(storeName, key, callback) {
   await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
   const request = store.delete(key);
 
   request.onsuccess = () => {
-    console.log(`🗑️ Deleted key ${key} from ${storeName}`);
+    console.log(`🗑️ Deleted ${key} from ${storeName}`);
+    if (callback) callback();
   };
 
   request.onerror = event => {
-    console.error(`❌ Error deleting from ${storeName}:`, event.target.errorCode);
+    console.error(`❌ Failed to delete from ${storeName}`, event.target.errorCode);
   };
 }
 
-// ✅ Clear a whole store
+// Clear a store
 async function clearStore(storeName) {
   await ensureStoreExists(storeName);
   const tx = db.transaction(storeName, 'readwrite');
   const store = tx.objectStore(storeName);
-  const request = store.clear();
-
-  request.onsuccess = () => {
-    console.log(`🧹 Cleared all data from ${storeName}`);
-  };
-
-  request.onerror = event => {
-    console.error(`❌ Error clearing ${storeName}:`, event.target.errorCode);
-  };
+  store.clear();
 }

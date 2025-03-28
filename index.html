@@ -3,39 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>giselle EHR System</title>
+  <title>Giselle EHR System</title>
   <link rel="manifest" href="manifest.json" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="d-flex align-items-center p-3">
-    <img src="logo.png" alt="Facility System Logo" style="height: 50px; margin-right: 15px;">
-    <h1>giselle EHR System</h1>
+
+  <!-- Header and Navigation -->
+  <header class="bg-light border-bottom py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <img src="logo.png" alt="Facility Logo" style="height: 50px; margin-right: 15px;">
+        <h1 class="h4 mb-0">Giselle EHR System</h1>
+      </div>
+      <nav>
+        <a href="patients.html" class="btn btn-outline-primary me-2">Add Patient</a>
+        <a href="visits.html" class="btn btn-outline-success me-2">Add Visit</a>
+        <a href="registers.html" class="btn btn-outline-secondary">Create Register</a>
+      </nav>
+    </div>
   </header>
 
-  <nav>
-    <a href="patients.html">Patients</a>
-    <a href="visits.html">Visits</a>
-    <a href="registers.html">Registers</a>
-  </nav>
-
-  <!-- 📊 Dashboard Section -->
-  <div class="container-box">
-    <h3 class="mb-3">Facility Summary Dashboard</h3>
-
-    <!-- Report Type Filter -->
-    <div class="form-group mb-3 text-start">
-      <label for="reportType" class="form-label">Select Report:</label>
-      <select id="reportType" class="form-select w-auto d-inline-block" onchange="generateSummary()">
-        <option value="patients">Patients</option>
-        <option value="visits">Visits</option>
-        <!-- 📦 More registers will be added dynamically -->
-      </select>
+  <!-- Report Type Toggle -->
+  <div class="container mt-3 text-center">
+    <div class="btn-group mb-4" role="group">
+      <button class="btn btn-outline-primary" onclick="showSection('patients')">Patient Report</button>
+      <button class="btn btn-outline-success" onclick="showSection('visits')">Visit Report</button>
+      <button class="btn btn-outline-secondary" onclick="showSection('registers')">Registers Report</button>
     </div>
 
-    <!-- Period + Sex Filter -->
-    <div class="form-group mb-4 text-start">
+    <div class="mb-3">
       <label for="periodFilter" class="form-label">Filter by Period:</label>
       <select id="periodFilter" class="form-select w-auto d-inline-block" onchange="generateSummary()">
         <option value="day">Today</option>
@@ -44,55 +42,77 @@
         <option value="year">This Year</option>
         <option value="all">All Time</option>
       </select>
-
-      <label for="sexFilter" class="form-label ms-3">Filter by Sex:</label>
-      <select id="sexFilter" class="form-select w-auto d-inline-block" onchange="generateSummary()">
-        <option value="all">All</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-      </select>
     </div>
-
-    <!-- 🕒 Selected Period -->
-    <div id="selectedPeriod" class="mb-4 text-start"></div>
-
-    <!-- 🧾 Summary Cards -->
-    <div id="summaryCards" class="row g-3">
-      <div class="col-md-3">
-        <div class="text-center">
-          <p class="card-label">Total Patients</p>
-          <div class="card text-center equal-card">
-            <div class="card-body">
-              <p class="card-value display-6">123</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="text-center">
-          <p class="card-label">Total Visits</p>
-          <div class="card text-center equal-card">
-            <div class="card-body">
-              <p class="card-value display-6">456</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 📋 Data Table -->
-    <div id="dataTable" class="mt-5"></div>
-
-    <!-- 📈 Chart Section -->
-    <div id="summaryChart" class="mt-5"></div>
   </div>
 
-  <footer>
-    <p>&copy; 2025 giselle EHR System</p>
+  <!-- Dashboard Sections -->
+  <div class="container mb-5">
+    <!-- Patients Section -->
+    <div id="section-patients" class="dashboard-section">
+      <h3 class="text-primary mb-3">Patients Summary</h3>
+      <div id="patientsSummaryCards" class="row g-3 mb-4"></div>
+
+      <h5>Sex Distribution</h5>
+      <canvas id="patientSexChart" height="150"></canvas>
+
+      <h5 class="mt-4">Age Group Distribution</h5>
+      <table class="table table-bordered">
+        <thead><tr><th>Age Group</th><th>Male</th><th>Female</th><th>Total</th></tr></thead>
+        <tbody id="patientsAgeGroupTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Visits Section -->
+    <div id="section-visits" class="dashboard-section d-none">
+      <h3 class="text-success mb-3">Visits Summary</h3>
+      <div id="visitsSummaryCards" class="row g-3 mb-4"></div>
+
+      <h5>Visits by Sex</h5>
+      <canvas id="visitSexChart" height="150"></canvas>
+
+      <h5 class="mt-4">Recent Visits</h5>
+      <table class="table table-bordered">
+        <thead><tr><th>Patient</th><th>Date</th><th>Reason</th><th>Diagnosis</th></tr></thead>
+        <tbody id="visitsDetailsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Registers Section -->
+    <div id="section-registers" class="dashboard-section d-none">
+      <h3 class="text-secondary mb-3">Registers Summary</h3>
+      <div id="registersSummaryCards" class="row g-3 mb-4"></div>
+
+      <h5>Active Registers</h5>
+      <ul id="registerList" class="list-group"></ul>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center mt-auto p-3 border-top">
+    <p class="mb-0">&copy; 2025 Giselle EHR System</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Optional: For charts -->
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="db.js"></script>
   <script src="app.js"></script>
+  <script>
+    function showSection(section) {
+      document.querySelectorAll('.dashboard-section').forEach(el => el.classList.add('d-none'));
+      document.getElementById(`section-${section}`).classList.remove('d-none');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      showSection('patients'); // default view
+      generateSummary();
+    });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(() => {
+        console.log('✅ Service Worker Registered');
+      });
+    }
+  </script>  
 </body>
 </html>

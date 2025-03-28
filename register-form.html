@@ -3,93 +3,223 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title id="pageTitle">Register Form</title>
-  <link rel="manifest" href="manifest.json" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <title>Register Entry</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
-  <!-- Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">gissele EHR System</a>
-      <div class="collapse navbar-collapse">
-        <ul class="navbar-nav">
-          <li class="nav-item"><a class="nav-link" href="visits.html">Visits</a></li>
-          <li class="nav-item"><a class="nav-link active" href="registers.html">Registers</a></li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-
-  <header class="p-3 bg-light">
-    <h1 id="registerTitle" class="text-center">Register</h1>
-  </header>
-
   <div class="container mt-4">
-    <!-- Search Patient -->
-    <div class="form-group mb-3">
-      <label for="searchPatientID"><strong>Search Patient ID</strong></label>
+    <h2 id="registerTitle" class="mb-4 text-primary">Register Form</h2>
+
+    <!-- Patient Search -->
+    <div class="mb-4">
+      <label for="searchPatientID" class="form-label">Search Patient ID:</label>
       <div class="d-flex">
-        <input type="text" id="searchPatientID" class="form-control" placeholder="Enter Patient ID" />
-        <button class="btn btn-primary ms-2" onclick="searchPatient()">Search</button>
+        <input type="text" id="searchPatientID" class="form-control me-2" placeholder="e.g. PHC-12345-25">
+        <button class="btn btn-primary" onclick="searchPatient()">Search</button>
       </div>
     </div>
 
-    <!-- Display Patient Info -->
+    <!-- Patient Info -->
     <div id="patientDetails" class="mb-4" style="display: none;">
+      <h5 class="mb-2">Patient Details</h5>
       <p><strong>Name:</strong> <span id="displayPatientName"></span></p>
       <p><strong>Sex:</strong> <span id="displaySex"></span></p>
       <p><strong>Age:</strong> <span id="displayAge"></span></p>
-      <input type="hidden" id="hiddenPatientID" />
     </div>
 
     <!-- Register Form -->
-    <form id="dynamicRegisterForm">
-      <div class="form-group mb-3">
-        <label for="dateOfService">Date of Service</label>
-        <input type="text" id="dateOfService" class="form-control" placeholder="Select Date" required />
+    <form id="dynamicRegisterForm" style="display: none;">
+      <input type="hidden" id="hiddenPatientID" />
+
+      <div class="mb-3">
+        <label>Date of Service</label>
+        <input type="text" id="dateOfService" class="form-control" required />
       </div>
 
-      <div id="customFieldsContainer" class="mb-3">
-        <!-- Dynamic Fields -->
-      </div>
+      <div id="dynamicFields"></div>
 
-      <button type="submit" class="btn btn-success">Save Record</button>
+      <button type="submit" class="btn btn-success mt-3">Save Entry</button>
     </form>
-  </div>
 
-  <!-- Table of Records -->
-  <div class="container mt-5">
-    <h3>Records in this Register</h3>
-    <div class="d-flex align-items-center mb-3">
-      <input type="date" id="filterDate" class="form-control me-2" style="max-width: 200px;" />
-      <button class="btn btn-info me-2" id="filterDateBtn">Filter</button>
-      <button class="btn btn-success" id="exportBtn">Export to Excel</button>
+    <hr class="my-5" />
+
+    <div class="d-flex justify-content-between align-items-center">
+      <h4 class="mb-3">Register Records</h4>
+      <button id="exportRegisterBtn" class="btn btn-outline-success">Export to Excel</button>
     </div>
-    <table class="table table-bordered table-hover">
-      <thead>
-        <tr id="registerTableHeader"></tr>
-      </thead>
+    <table class="table table-bordered">
+      <thead id="registerTableHead"></thead>
       <tbody id="registerTableBody"></tbody>
     </table>
   </div>
 
-  <footer class="text-center mt-4">
-    <p>&copy; 2025 Giselle EHR System</p>
-  </footer>
-
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="db.js"></script>
-  <script src="register-form.js"></script>
   <script>
-    flatpickr("#dateOfService", {
-      dateFormat: "Y-m-d",
-      maxDate: "today"
+    let currentRegister = null;
+    let currentPatient = null;
+
+    const urlParams = new URLSearchParams(location.search);
+    const registerName = urlParams.get('name');
+    document.getElementById('registerTitle').textContent = registerName;
+
+    flatpickr("#dateOfService", { maxDate: "today", dateFormat: "Y-m-d" });
+
+    // Load register by name
+    getAllData("registers", registers => {
+      currentRegister = registers.find(r => r.name === registerName);
+      if (!currentRegister) {
+        alert("Register not found.");
+        return;
+      }
+      renderFields(currentRegister.fields);
+      loadEntries();
     });
+
+    function searchPatient() {
+      const id = document.getElementById('searchPatientID').value.trim();
+      if (!id) return alert("Enter Patient ID");
+
+      getDataByKey('patients', id, patient => {
+        if (!patient) return alert("Patient not found.");
+
+        currentPatient = patient;
+        document.getElementById('hiddenPatientID').value = patient.patientId;
+        document.getElementById('displayPatientName').textContent = patient.name;
+        document.getElementById('displaySex').textContent = patient.sex;
+        document.getElementById('displayAge').textContent = patient.age;
+        document.getElementById('patientDetails').style.display = 'block';
+        document.getElementById('dynamicRegisterForm').style.display = 'block';
+      });
+    }
+
+    function renderFields(fields) {
+      const container = document.getElementById("dynamicFields");
+      container.innerHTML = "";
+
+      fields.forEach(field => {
+        const div = document.createElement("div");
+        div.className = "form-group mb-3";
+        div.innerHTML = `<label>${field.label}</label>`;
+
+        let input = "";
+        const nameAttr = `name="${field.label}"`;
+
+        if (["text", "number", "decimal", "date"].includes(field.type)) {
+          input = `<input type="${field.type === 'decimal' ? 'number' : field.type}" class="form-control" step="${field.type === 'decimal' ? 'any' : ''}" ${nameAttr}>`;
+        } else if (field.type === "textarea") {
+          input = `<textarea class="form-control" ${nameAttr}></textarea>`;
+        } else if (field.type === "select_one") {
+          input = `<select class="form-control" ${nameAttr}>
+            ${field.options.map(opt => `<option value="${opt}">${opt}</option>`).join("")}
+          </select>`;
+        } else if (field.type === "multiselect") {
+          input = field.options.map(opt => `
+            <label class="me-2"><input type="checkbox" value="${opt}" name="${field.label}"> ${opt}</label>
+          `).join(" ");
+        } else if (["image", "file"].includes(field.type)) {
+          input = `<input type="file" class="form-control" ${nameAttr}>`;
+        }
+
+        div.innerHTML += input;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById("dynamicRegisterForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const patientID = currentPatient?.patientId;
+      const dateOfService = document.getElementById("dateOfService").value.trim();
+      if (!patientID || !dateOfService) return alert("Patient and Date of Service required");
+
+      const entry = {
+        patientID,
+        dateOfService,
+        patientName: currentPatient.name,
+        sex: currentPatient.sex,
+        age: currentPatient.age,
+        createdAt: new Date().toISOString()
+      };
+
+      currentRegister.fields.forEach(field => {
+        if (field.type === "multiselect") {
+          const values = Array.from(document.querySelectorAll(`input[name="${field.label}"]:checked`)).map(cb => cb.value);
+          entry[field.label] = values;
+        } else {
+          const input = document.querySelector(`[name="${field.label}"]`);
+          entry[field.label] = input?.value || "";
+        }
+      });
+
+      await saveData(`register-${currentRegister.id}`, entry);
+      alert("✅ Entry saved successfully");
+      e.target.reset();
+      document.getElementById('dynamicRegisterForm').style.display = 'none';
+      document.getElementById('patientDetails').style.display = 'none';
+      currentPatient = null;
+      loadEntries();
+    });
+
+    function loadEntries() {
+      const head = document.getElementById("registerTableHead");
+      const body = document.getElementById("registerTableBody");
+      head.innerHTML = "";
+      body.innerHTML = "";
+
+      const columns = ["Patient ID", "Patient Name", "Sex", "Age", "Date of Service", ...currentRegister.fields.map(f => f.label), "Actions"];
+      head.innerHTML = `<tr>${columns.map(c => `<th>${c}</th>`).join("")}</tr>`;
+
+      getAllData(`register-${currentRegister.id}`, records => {
+        records.reverse().forEach((rec, idx) => {
+          const cells = [
+            rec.patientID, rec.patientName, rec.sex, rec.age, rec.dateOfService,
+            ...currentRegister.fields.map(f => Array.isArray(rec[f.label]) ? rec[f.label].join(', ') : rec[f.label] || ''),
+            `<button class="btn btn-sm btn-danger" onclick="deleteEntry(${idx})">Delete</button>`
+          ];
+          const row = document.createElement("tr");
+          row.innerHTML = cells.map(c => `<td>${c}</td>`).join("");
+          body.appendChild(row);
+        });
+      });
+    }
+
+    function deleteEntry(index) {
+      if (!confirm("Delete this entry?")) return;
+      getAllData(`register-${currentRegister.id}`, records => {
+        const record = records.reverse()[index];
+        deleteData(`register-${currentRegister.id}`, record.id, loadEntries);
+      });
+    }
+
+    document.getElementById("exportRegisterBtn").onclick = () => {
+      getAllData(`register-${currentRegister.id}`, records => {
+        const exportData = records.map(r => ({
+          PatientID: r.patientID,
+          Name: r.patientName,
+          Sex: r.sex,
+          Age: r.age,
+          DateOfService: r.dateOfService,
+          ...Object.fromEntries(currentRegister.fields.map(f => [f.label, Array.isArray(r[f.label]) ? r[f.label].join(", ") : r[f.label]]))
+        }));
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        XLSX.utils.book_append_sheet(wb, ws, currentRegister.name);
+        XLSX.writeFile(wb, `${currentRegister.name}.xlsx`);
+      });
+    };
+  </script>
+  <script src="register-form.js"></script>
+   <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(() => {
+        console.log('✅ Service Worker Registered');
+      });
+    }
   </script>
 </body>
 </html>
