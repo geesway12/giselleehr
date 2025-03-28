@@ -138,3 +138,16 @@ async function clearStore(storeName) {
   const store = tx.objectStore(storeName);
   store.clear();
 }
+
+function deleteObjectStore(storeName, callback) {
+  const request = indexedDB.open('GiselleDB');
+  request.onupgradeneeded = function (event) {
+    const db = event.target.result;
+    if (db.objectStoreNames.contains(storeName)) {
+      db.deleteObjectStore(storeName);
+    }
+  };
+  request.onsuccess = function () {
+    callback();
+  };
+}

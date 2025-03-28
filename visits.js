@@ -1,11 +1,10 @@
 let currentPatient = null;
+let editingVisitId = null;
 
+// 🔍 Search Patient
 function searchPatient() {
   const patientId = document.getElementById('searchPatientID').value.trim();
-  if (!patientId) {
-    alert('Please enter a Patient ID.');
-    return;
-  }
+  if (!patientId) return alert('Please enter a Patient ID.');
 
   getDataByKey('patients', patientId, (patient) => {
     if (!patient) {
@@ -23,6 +22,7 @@ function searchPatient() {
   });
 }
 
+// 💾 Save Visit
 document.getElementById('visitForm').onsubmit = async (e) => {
   e.preventDefault();
 
@@ -42,7 +42,7 @@ document.getElementById('visitForm').onsubmit = async (e) => {
   }
 
   const visit = {
-    id: `visit-${Date.now()}`,
+    id: editingVisitId || `visit-${Date.now()}`,
     patientId,
     visitDate,
     reason,
@@ -59,54 +59,102 @@ document.getElementById('visitForm').onsubmit = async (e) => {
   };
 
   await saveData('visits', visit);
+  alert(editingVisitId ? '✅ Visit updated!' : '✅ Visit saved!');
 
-  alert('✅ Visit saved successfully!');
   document.getElementById('visitForm').reset();
   document.getElementById('patientDetails').style.display = 'none';
   currentPatient = null;
-  loadVisits();
+  editingVisitId = null;
+  renderVisitList();
 };
 
-function loadVisits() {
-  getAllData('visits', visits => {
+// 📋 Render Visits
+function renderVisitList() {
+  getAllData('visits', async visits => {
     const tbody = document.getElementById('visitTableBody');
     tbody.innerHTML = '';
 
+    if (visits.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center">No visits found.</td></tr>`;
+      return;
+    }
+
+    // Sort by date descending
     visits.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate));
 
-    visits.forEach(visit => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${visit.id}</td>
-        <td>${visit.visitDate}</td>
-        <td>${visit.patientName}</td>
-        <td>${visit.age}</td>
-        <td>${visit.sex}</td>
-        <td>${visit.reason}</td>
-        <td>${visit.notes}</td>
-        <td>${visit.history}</td>
-        <td>${visit.findings}</td>
-        <td>${visit.investigations}</td>
-        <td>${visit.diagnosis}</td>
-        <td>${visit.treatment}</td>
-        <td>
-          <button class="btn btn-sm btn-danger" onclick="deleteVisit('${visit.id}')">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(row);
+    // Resolve patient names
+    const visitRows = await Promise.all(visits.map(visit =>
+      new Promise(resolve => {
+        getDataByKey('patients', visit.patientId, patient => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${visit.id}</td>
+            <td>${visit.visitDate}</td>
+            <td>${patient ? patient.name : visit.patientName}</td>
+            <td>${patient ? calculateAge(patient.dob) : visit.age}</td>
+            <td>${patient ? patient.sex : visit.sex}</td>
+            <td>${visit.reason}</td>
+            <td>${visit.notes || 'N/A'}</td>
+            <td>${visit.history || 'N/A'}</td>
+            <td>${visit.findings || 'N/A'}</td>
+            <td>${visit.investigations || 'N/A'}</td>
+            <td>${visit.diagnosis || 'N/A'}</td>
+            <td>${visit.treatment || 'N/A'}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editVisit('${visit.id}')">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteVisit('${visit.id}')">Delete</button>
+            </td>
+          `;
+          resolve(row);
+        });
+      })
+    ));
+
+    visitRows.forEach(row => tbody.appendChild(row));
+  });
+}
+
+// 📝 Edit Visit
+function editVisit(id) {
+  getDataByKey('visits', id, visit => {
+    if (!visit) return alert('Visit not found.');
+
+    editingVisitId = visit.id;
+    getDataByKey('patients', visit.patientId, patient => {
+      if (!patient) return alert('Patient not found.');
+
+      currentPatient = patient;
+
+      document.getElementById('searchPatientID').value = patient.patientId;
+      document.getElementById('hiddenPatientID').value = patient.patientId;
+      document.getElementById('displayPatientName').textContent = patient.name;
+      document.getElementById('displaySex').textContent = patient.sex;
+      document.getElementById('displayAge').textContent = patient.age;
+      document.getElementById('patientDetails').style.display = 'block';
+
+      document.getElementById('visitDate').value = visit.visitDate;
+      document.getElementById('reason').value = visit.reason;
+      document.getElementById('notes').value = visit.notes;
+      document.getElementById('history').value = visit.history;
+      document.getElementById('examinationFindings').value = visit.findings;
+      document.getElementById('investigations').value = visit.investigations;
+      document.getElementById('diagnosis').value = visit.diagnosis;
+      document.getElementById('treatment').value = visit.treatment;
     });
   });
 }
 
+// ❌ Delete Visit
 function deleteVisit(id) {
-  if (confirm('Are you sure you want to delete this visit?')) {
-    deleteData('visits', id, loadVisits);
+  if (confirm('Delete this visit?')) {
+    deleteData('visits', id, renderVisitList);
   }
 }
 
+// 📤 Export
 document.getElementById('exportVisitsBtn').onclick = () => {
   getAllData('visits', visits => {
-    const exportData = visits.map(v => ({
+    const data = visits.map(v => ({
       VisitID: v.id,
       VisitDate: v.visitDate,
       PatientName: v.patientName,
@@ -122,21 +170,31 @@ document.getElementById('exportVisitsBtn').onclick = () => {
     }));
 
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, 'Visits');
     XLSX.writeFile(wb, 'Visits.xlsx');
   });
 };
 
-// Auto-load visits on page load
+// 🚀 On Page Load
 document.addEventListener('DOMContentLoaded', () => {
-  loadVisits();
+  renderVisitList();
 
-  // ✅ If redirected from "Add Visit" button on patients page
-  const urlParams = new URLSearchParams(window.location.search);
-  const prefillId = urlParams.get('patientId');
+  // If redirected from Patients page
+  const params = new URLSearchParams(window.location.search);
+  const prefillId = params.get('patientId');
   if (prefillId) {
     document.getElementById('searchPatientID').value = prefillId;
-    searchPatient(); // Auto-search
+    searchPatient();
   }
 });
+
+// 🧠 Helper
+function calculateAge(dob) {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+  return age;
+}
