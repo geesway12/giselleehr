@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = 'facility-cache-v4'; // 🔁 Increment on each update
+const CACHE_NAME = 'facility-cache-v5'; // 🔁 Increment on each update
 
 const FILES_TO_CACHE = [
   './',
