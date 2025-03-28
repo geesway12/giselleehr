@@ -1,13 +1,16 @@
+// db.js
 const DB_NAME = 'FacilityDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented version for schema changes
 let db;
 let dbReady = false;
 
+// Database initialization
 const request = indexedDB.open(DB_NAME, DB_VERSION);
 
 request.onupgradeneeded = event => {
-  db = event.target.result;
-
+  const db = event.target.result;
+  
+  // Create object stores if they don't exist
   if (!db.objectStoreNames.contains('patients')) {
     db.createObjectStore('patients', { keyPath: 'patientId' });
   }
@@ -30,124 +33,117 @@ request.onsuccess = event => {
   dbReady = true;
   console.log('✅ IndexedDB initialized');
 
+  // Add version change handler
+  db.onversionchange = () => {
+    db.close();
+    console.log('Database is outdated, closing connection');
+  };
+
   if (typeof window.onDatabaseReady === 'function') {
     window.onDatabaseReady();
   }
 };
 
 request.onerror = event => {
-  console.error('❌ IndexedDB error:', event.target.errorCode);
+  console.error('❌ IndexedDB initialization error:', event.target.error);
 };
 
-async function ensureStoreExists(storeName) {
-  if (db.objectStoreNames.contains(storeName)) return;
-
-  db.close();
-  const newVersion = db.version + 1;
-  const upgradeRequest = indexedDB.open(DB_NAME, newVersion);
-
-  upgradeRequest.onupgradeneeded = event => {
-    const upgradeDb = event.target.result;
-    upgradeDb.createObjectStore(storeName, { autoIncrement: true });
-    console.log(`📦 Created store: ${storeName}`);
-  };
-
-  upgradeRequest.onsuccess = event => {
-    db = event.target.result;
-    console.log(`🔄 DB upgraded to version ${newVersion}`);
-  };
-
-  upgradeRequest.onerror = event => {
-    console.error('❌ Store creation error:', event.target.errorCode);
-  };
-}
-
-// Save data
-async function saveData(storeName, data, callback) {
-  await ensureStoreExists(storeName);
-  const tx = db.transaction(storeName, 'readwrite');
-  const store = tx.objectStore(storeName);
-  const request = store.put(data);
-
-  request.onsuccess = () => {
-    console.log(`✅ Saved to ${storeName}`, data);
-    if (callback) callback();
-  };
-
-  request.onerror = event => {
-    console.error(`❌ Failed to save to ${storeName}:`, event.target.errorCode);
-  };
-}
-
-// Get all data
-async function getAllData(storeName, callback) {
-  await ensureStoreExists(storeName);
-  const tx = db.transaction(storeName, 'readonly');
-  const store = tx.objectStore(storeName);
-  const data = [];
-
-  store.openCursor().onsuccess = event => {
-    const cursor = event.target.result;
-    if (cursor) {
-      data.push(cursor.value);
-      cursor.continue();
-    } else {
-      callback(data);
+// Database operations
+const dbHandler = {
+  async execute(storeName, operation, data = null, key = null) {
+    if (!dbReady) throw new Error('Database not initialized');
+    if (!db.objectStoreNames.contains(storeName)) {
+      throw new Error(`Object store ${storeName} not found`);
     }
-  };
 
-  tx.onerror = event => {
-    console.error(`❌ Error reading ${storeName}:`, event.target.errorCode);
-  };
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+
+      let request;
+      switch (operation) {
+        case 'save':
+          request = store.put(data);
+          break;
+        case 'getAll':
+          request = store.getAll();
+          break;
+        case 'get':
+          request = store.get(key);
+          break;
+        case 'delete':
+          request = store.delete(key);
+          break;
+        default:
+          reject(new Error('Invalid operation'));
+      }
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+};
+
+// Public API
+async function saveData(storeName, data) {
+  try {
+    await dbHandler.execute(storeName, 'save', data);
+    console.log(`✅ Saved to ${storeName}:`, data);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error saving to ${storeName}:`, error);
+    throw error;
+  }
 }
 
-// Get by key
-async function getDataByKey(storeName, key, callback) {
-  await ensureStoreExists(storeName);
-  const tx = db.transaction(storeName, 'readonly');
-  const store = tx.objectStore(storeName);
-  const request = store.get(key);
-
-  request.onsuccess = () => callback(request.result);
-  request.onerror = event => {
-    console.error(`❌ Failed to get from ${storeName}`, event.target.errorCode);
-  };
+async function getAllData(storeName) {
+  try {
+    const data = await dbHandler.execute(storeName, 'getAll');
+    return data;
+  } catch (error) {
+    console.error(`❌ Error reading from ${storeName}:`, error);
+    throw error;
+  }
 }
 
-// Delete by key
-async function deleteData(storeName, key, callback) {
-  await ensureStoreExists(storeName);
-  const tx = db.transaction(storeName, 'readwrite');
-  const store = tx.objectStore(storeName);
-  const request = store.delete(key);
-
-  request.onsuccess = () => {
-    console.log(`🗑️ Deleted ${key} from ${storeName}`);
-    if (callback) callback();
-  };
-
-  request.onerror = event => {
-    console.error(`❌ Failed to delete from ${storeName}`, event.target.errorCode);
-  };
+async function getDataByKey(storeName, key) {
+  try {
+    const data = await dbHandler.execute(storeName, 'get', null, key);
+    return data;
+  } catch (error) {
+    console.error(`❌ Error getting from ${storeName}:`, error);
+    throw error;
+  }
 }
 
-// Clear a store
-async function clearStore(storeName) {
-  await ensureStoreExists(storeName);
-  const tx = db.transaction(storeName, 'readwrite');
-  const store = tx.objectStore(storeName);
-  store.clear();
+async function deleteData(storeName, key) {
+  try {
+    await dbHandler.execute(storeName, 'delete', null, key);
+    console.log(`🗑️ Deleted from ${storeName}:`, key);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error deleting from ${storeName}:`, error);
+    throw error;
+  }
 }
 
-function deleteObjectStore(storeName, callback) {
-  const request = indexedDB.open('GiselleDB');
-  request.onupgradeneeded = function (event) {
-    const db = event.target.result;
-    if (db.objectStoreNames.contains(storeName)) {
-      db.deleteObjectStore(storeName);
-    }
-  };
-  request.onsuccess = function () {
-    callback();
-  };
+// Utility functions
+function clearDatabase() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
+  });
 }
+
+// Export for browser usage
+window.dbAPI = {
+  saveData,
+  getAllData,
+  getDataByKey,
+  deleteData,
+  clearDatabase
+};
