@@ -416,3 +416,17 @@ button:hover {
   border-color: #0056b3; /* Darker blue on hover */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Slightly stronger shadow on hover */
 }
+
+.dashboard-section canvas {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .card-title {
+    font-size: 1.1rem;
+  }
+  
+  .display-4 {
+    font-size: 2.5rem;
+    font-weight: 300;
+  }

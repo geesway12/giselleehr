@@ -28,7 +28,7 @@
   <!-- Report Type Toggle -->
   <div class="container mt-3 text-center">
     <div class="btn-group mb-4" role="group">
-      <button class="btn btn-outline-primary" onclick="showSection('patients')">Patient Report</button>
+      <button class="btn btn-outline-primary active" onclick="showSection('patients')">Patient Report</button>
       <button class="btn btn-outline-success" onclick="showSection('visits')">Visit Report</button>
       <button class="btn btn-outline-secondary" onclick="showSection('registers')">Registers Report</button>
     </div>
@@ -96,23 +96,46 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="db.js"></script>
   <script src="app.js"></script>
+  
+  <!-- Combined Scripts -->
   <script>
+    // Section management
     function showSection(section) {
-      document.querySelectorAll('.dashboard-section').forEach(el => el.classList.add('d-none'));
+      // Update buttons
+      document.querySelectorAll('.btn-group .btn').forEach(btn => 
+        btn.classList.remove('active')
+      );
+      event.target.classList.add('active');
+      
+      // Update sections
+      document.querySelectorAll('.dashboard-section').forEach(el => 
+        el.classList.add('d-none')
+      );
       document.getElementById(`section-${section}`).classList.remove('d-none');
+      
+      // Refresh data
+      generateSummary();
     }
 
+    // Initialization
     document.addEventListener('DOMContentLoaded', () => {
-      showSection('patients'); // default view
-      generateSummary();
+      // Default view
+      showSection('patients');
+      
+      // Auto-refresh every 5 minutes
+      setInterval(generateSummary, 300000);
+      
+      // Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => {
+            console.log('✅ Service Worker registered:', reg);
+            // Check for updates every hour
+            setInterval(() => reg.update(), 3600000);
+          })
+          .catch(err => console.error('❌ Service Worker registration failed:', err));
+      }
     });
   </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then(() => {
-        console.log('✅ Service Worker Registered');
-      });
-    }
-  </script>  
 </body>
 </html>
